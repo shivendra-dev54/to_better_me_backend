@@ -38,11 +38,17 @@ npm run dev
 
 ## 📑 API Endpoints
 
+🌐 **Base URL:** [`https://to-better-me-backend.onrender.com`](https://to-better-me-backend.onrender.com)
+
+---
+
 ### 🔐 Auth Routes (`/api/auth`)
 
 #### POST `/sign_up`
 
 Create a new user account.
+
+**Full URL:** `https://to-better-me-backend.onrender.com/api/auth/sign_up`
 
 **Body:**
 
@@ -63,6 +69,8 @@ Create a new user account.
 #### POST `/sign_in`
 
 Sign in with email and password.
+
+**Full URL:** `https://to-better-me-backend.onrender.com/api/auth/sign_in`
 
 **Body:**
 
@@ -93,12 +101,16 @@ Sign in with email and password.
 
 #### GET `/get_current`
 
+**Full URL:** `https://to-better-me-backend.onrender.com/api/user/get_current`
+
 * Deletes all non-special users and their entries.
 * Returns info of the currently signed-in user.
 
 ---
 
 #### POST `/daily_entry`
+
+**Full URL:** `https://to-better-me-backend.onrender.com/api/user/daily_entry`
 
 Create a new daily log.
 
@@ -127,11 +139,15 @@ Create a new daily log.
 
 #### GET `/get_all_entries`
 
+**Full URL:** `https://to-better-me-backend.onrender.com/api/user/get_all_entries`
+
 Get all daily entries of the signed-in user.
 
 ---
 
 #### DELETE `/delete_entry/:id`
+
+**Full URL:** `https://to-better-me-backend.onrender.com/api/user/delete_entry/:id`
 
 Delete a specific daily entry by its ID.
 
