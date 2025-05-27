@@ -6,7 +6,6 @@ interface DailyEntry {
     sleepHours: {
         start: Date;
         end: Date;
-        isExtra: boolean;
     }[];
     summary: string;
 }
@@ -33,10 +32,6 @@ const DailyEntryModel: Schema<DailyEntry> = new mongoose.Schema({
                 },
                 end: {
                     type: Date,
-                    required: true,
-                },
-                isExtra: {
-                    type: Boolean,
                     required: true,
                 },
             },

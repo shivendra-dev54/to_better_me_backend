@@ -7,6 +7,8 @@ interface CustomRequest extends Request {
     user?: any;
 }
 
+
+
 //@desc POST to add daily entries 
 //@route /api/user/daily_entry
 //@access private
@@ -18,6 +20,7 @@ const daily_entry = asyncHandler(async (req: CustomRequest, res: Response) => {
         throw new Error("Please provide date, sleepHours, and summary.");
     }
 
+
     const entry = await DailyEntrySchema.create({
         userId: req.user.id,
         date: new Date(date),
@@ -28,6 +31,10 @@ const daily_entry = asyncHandler(async (req: CustomRequest, res: Response) => {
     res.status(201).json(entry);
 });
 
+
+
+
+
 //@desc GET to get all entries of a user
 //@route /api/user/get_all_entries
 //@access private
@@ -35,6 +42,9 @@ const get_all_entries = asyncHandler(async (req: CustomRequest, res: Response) =
     const entries = await DailyEntrySchema.find({ userId: req.user.id }).sort({ date: -1 });
     res.status(200).json(entries);
 });
+
+
+
 
 //@desc DELETE to delete any entry
 //@route /api/user/delete_entry/:id
@@ -58,6 +68,9 @@ const delete_entry = asyncHandler(async (req: CustomRequest, res: Response) => {
     res.status(200).json({ message: "Entry deleted", id });
 });
 
+
+
+
 //@desc GET to get signed in user info
 //@route /api/user/get_current
 //@access private
@@ -79,6 +92,9 @@ const get_current = asyncHandler(async (req: CustomRequest, res: Response) => {
         currentUser: req.user
     });
 });
+
+
+
 
 export default {
     get_all_entries,

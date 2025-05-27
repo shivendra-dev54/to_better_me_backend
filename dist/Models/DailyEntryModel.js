@@ -28,10 +28,6 @@ const DailyEntryModel = new mongoose_1.default.Schema({
                     type: Date,
                     required: true,
                 },
-                isExtra: {
-                    type: Boolean,
-                    required: true,
-                },
             },
         ],
         required: true,
