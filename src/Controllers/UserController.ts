@@ -20,16 +20,37 @@ const daily_entry = asyncHandler(async (req: CustomRequest, res: Response) => {
         throw new Error("Please provide date, sleepHours, and summary.");
     }
 
+    // Convert to start of day to compare date-only (ignoring time)
+    const entryDate = new Date(date);
+    entryDate.setHours(0, 0, 0, 0);
 
+    // Check for existing entry for that user and date
+    const existingEntry = await DailyEntrySchema.findOne({
+        userId: req.user.id,
+        date: {
+            $gte: entryDate,
+            $lt: new Date(entryDate.getTime() + 24 * 60 * 60 * 1000), // next day
+        },
+    });
+
+    if (existingEntry) {
+        res.status(409).json({
+            message: "Entry for this date already exists. Please edit the existing entry.",
+        });
+        return;
+    }
+
+    // Create new entry
     const entry = await DailyEntrySchema.create({
         userId: req.user.id,
-        date: new Date(date),
+        date: entryDate,
         sleepHours,
         summary,
     });
 
     res.status(201).json(entry);
 });
+
 
 
 
@@ -47,26 +68,37 @@ const get_all_entries = asyncHandler(async (req: CustomRequest, res: Response) =
 
 
 //@desc DELETE to delete any entry
-//@route /api/user/delete_entry/:id
+//@route /api/user/update_entry/:id
 //@access private
-const delete_entry = asyncHandler(async (req: CustomRequest, res: Response) => {
+const update_entry = asyncHandler(async (req: CustomRequest, res: Response) => {
     const id = req.params.id;
+    const { date, sleepHours, summary } = req.body;
+
     const entry = await DailyEntrySchema.findById(id);
 
     if (!entry) {
         res.status(404);
-        throw new Error("Entry not found");
+        throw new Error("Entry not found"); 
     }
 
-    if (entry.userId !== req.user.id) {
+    if (entry.userId.toString() !== req.user.id) {
         res.status(403);
-        throw new Error("Not authorized to delete this entry");
+        throw new Error("Not authorized to update this entry");
     }
 
-    await entry.deleteOne();
+    // Update the fields only if they are provided
+    if (date) entry.date = new Date(date);
+    if (sleepHours !== undefined) entry.sleepHours = sleepHours;
+    if (summary) entry.summary = summary;
 
-    res.status(200).json({ message: "Entry deleted", id });
+    const updatedEntry = await entry.save();
+
+    res.status(200).json({
+        message: "Entry updated successfully",
+        entry: updatedEntry,
+    });
 });
+
 
 
 
@@ -100,5 +132,5 @@ export default {
     get_all_entries,
     get_current,
     daily_entry,
-    delete_entry
+    update_entry
 };

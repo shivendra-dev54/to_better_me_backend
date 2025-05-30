@@ -6,7 +6,7 @@ const UserRouter = Router();
 
 UserRouter.route("/api/user/get_current").get(validateTokens, UserController.get_current);
 
-UserRouter.route("/api/user/delete_entry/:id").delete(validateTokens, UserController.delete_entry);
+UserRouter.route("/api/user/update_entry/:id").put(validateTokens, UserController.update_entry);
 
 UserRouter.route("/api/user/daily_entry").post(validateTokens, UserController.daily_entry);
 
