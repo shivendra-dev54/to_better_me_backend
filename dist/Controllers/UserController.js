@@ -15,6 +15,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_async_handler_1 = __importDefault(require("express-async-handler"));
 const DailyEntryModel_1 = __importDefault(require("../Models/DailyEntryModel"));
 const UserModel_1 = __importDefault(require("../Models/UserModel"));
+const encryption_1 = __importDefault(require("../utils/encryption")); // updated import
+const dotenv_1 = __importDefault(require("dotenv"));
+dotenv_1.default.config();
+const SECRET_KEY = process.env.ENCRYPTION_SECRET_KEY || "default-key";
 //@desc POST to add daily entries 
 //@route /api/user/daily_entry
 //@access private
@@ -24,15 +28,13 @@ const daily_entry = (0, express_async_handler_1.default)((req, res) => __awaiter
         res.status(400);
         throw new Error("Please provide date, sleepHours, and summary.");
     }
-    // Convert to start of day to compare date-only (ignoring time)
     const entryDate = new Date(date);
     entryDate.setHours(0, 0, 0, 0);
-    // Check for existing entry for that user and date
     const existingEntry = yield DailyEntryModel_1.default.findOne({
         userId: req.user.id,
         date: {
             $gte: entryDate,
-            $lt: new Date(entryDate.getTime() + 24 * 60 * 60 * 1000), // next day
+            $lt: new Date(entryDate.getTime() + 24 * 60 * 60 * 1000),
         },
     });
     if (existingEntry) {
@@ -41,12 +43,12 @@ const daily_entry = (0, express_async_handler_1.default)((req, res) => __awaiter
         });
         return;
     }
-    // Create new entry
+    const encryptedSummary = encryption_1.default.encrypt(summary, SECRET_KEY);
     const entry = yield DailyEntryModel_1.default.create({
         userId: req.user.id,
         date: entryDate,
         sleepHours,
-        summary,
+        summary: encryptedSummary,
     });
     res.status(201).json(entry);
 }));
@@ -55,7 +57,8 @@ const daily_entry = (0, express_async_handler_1.default)((req, res) => __awaiter
 //@access private
 const get_all_entries = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const entries = yield DailyEntryModel_1.default.find({ userId: req.user.id }).sort({ date: -1 });
-    res.status(200).json(entries);
+    const decryptedEntries = entries.map(entry => (Object.assign(Object.assign({}, entry.toObject()), { summary: encryption_1.default.decrypt(entry.summary, SECRET_KEY) })));
+    res.status(200).json(decryptedEntries);
 }));
 //@desc PUT to update entry
 //@route /api/user/update_entry
@@ -64,24 +67,19 @@ const update_entry = (0, express_async_handler_1.default)((req, res) => __awaite
     const { date, sleepHours, summary, id } = req.body;
     const entry = yield DailyEntryModel_1.default.findById(id);
     if (!entry) {
-        res.status(200).json({
-            "error": "Entry not found"
-        });
+        res.status(200).json({ error: "Entry not found" });
         return;
     }
     if (entry.userId.toString() !== req.user.id) {
-        res.status(200).json({
-            "error": "Not authorized to update this entry"
-        });
+        res.status(200).json({ error: "Not authorized to update this entry" });
         return;
     }
-    // Update the fields only if they are provided
+    if (summary)
+        entry.summary = encryption_1.default.encrypt(summary, SECRET_KEY);
     if (date)
         entry.date = new Date(date);
     if (sleepHours !== undefined)
         entry.sleepHours = sleepHours;
-    if (summary)
-        entry.summary = summary;
     const updatedEntry = yield entry.save();
     res.status(200).json({
         message: "Entry updated successfully",
@@ -92,12 +90,9 @@ const update_entry = (0, express_async_handler_1.default)((req, res) => __awaite
 //@route /api/user/get_current
 //@access private
 const get_current = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    // Delete all users where isSpecial is false
     const nonSpecialUsers = yield UserModel_1.default.find({ isSpecial: false });
     const userIdsToDelete = nonSpecialUsers.map(user => user._id);
-    // Delete their corresponding daily entries
     yield DailyEntryModel_1.default.deleteMany({ userId: { $in: userIdsToDelete } });
-    // Delete the users themselves
     yield UserModel_1.default.deleteMany({ _id: { $in: userIdsToDelete } });
     res.status(200).json({
         message: "Deleted all non-special users and their entries",

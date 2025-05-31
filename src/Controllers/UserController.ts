@@ -2,12 +2,15 @@ import { Request, Response } from "express";
 import asyncHandler from "express-async-handler";
 import DailyEntrySchema from "../Models/DailyEntryModel";
 import UserSchema from "../Models/UserModel";
+import encryption from "../utils/encryption"; // updated import
+import dotenv from "dotenv";
+dotenv.config();
+
+const SECRET_KEY = process.env.ENCRYPTION_SECRET_KEY || "default-key";
 
 interface CustomRequest extends Request {
     user?: any;
 }
-
-
 
 //@desc POST to add daily entries 
 //@route /api/user/daily_entry
@@ -20,16 +23,14 @@ const daily_entry = asyncHandler(async (req: CustomRequest, res: Response) => {
         throw new Error("Please provide date, sleepHours, and summary.");
     }
 
-    // Convert to start of day to compare date-only (ignoring time)
     const entryDate = new Date(date);
     entryDate.setHours(0, 0, 0, 0);
 
-    // Check for existing entry for that user and date
     const existingEntry = await DailyEntrySchema.findOne({
         userId: req.user.id,
         date: {
             $gte: entryDate,
-            $lt: new Date(entryDate.getTime() + 24 * 60 * 60 * 1000), // next day
+            $lt: new Date(entryDate.getTime() + 24 * 60 * 60 * 1000),
         },
     });
 
@@ -40,59 +41,52 @@ const daily_entry = asyncHandler(async (req: CustomRequest, res: Response) => {
         return;
     }
 
-    // Create new entry
+    const encryptedSummary = encryption.encrypt(summary, SECRET_KEY);
+
     const entry = await DailyEntrySchema.create({
         userId: req.user.id,
         date: entryDate,
         sleepHours,
-        summary,
+        summary: encryptedSummary,
     });
 
     res.status(201).json(entry);
 });
-
-
-
-
-
 
 //@desc GET to get all entries of a user
 //@route /api/user/get_all_entries
 //@access private
 const get_all_entries = asyncHandler(async (req: CustomRequest, res: Response) => {
     const entries = await DailyEntrySchema.find({ userId: req.user.id }).sort({ date: -1 });
-    res.status(200).json(entries);
+
+    const decryptedEntries = entries.map(entry => ({
+        ...entry.toObject(),
+        summary: encryption.decrypt(entry.summary, SECRET_KEY)
+    }));
+
+    res.status(200).json(decryptedEntries);
 });
-
-
-
 
 //@desc PUT to update entry
 //@route /api/user/update_entry
 //@access private
 const update_entry = asyncHandler(async (req: CustomRequest, res: Response) => {
     const { date, sleepHours, summary, id } = req.body;
-
     const entry = await DailyEntrySchema.findById(id);
 
     if (!entry) {
-        res.status(200).json({
-            "error": "Entry not found"
-        });
-        return; 
-    }
-
-    if (entry.userId.toString() !== req.user.id) {
-        res.status(200).json({
-            "error": "Not authorized to update this entry"
-        });
+        res.status(200).json({ error: "Entry not found" });
         return;
     }
 
-    // Update the fields only if they are provided
+    if (entry.userId.toString() !== req.user.id) {
+        res.status(200).json({ error: "Not authorized to update this entry" });
+        return;
+    }
+
+    if (summary) entry.summary = encryption.encrypt(summary, SECRET_KEY);
     if (date) entry.date = new Date(date);
     if (sleepHours !== undefined) entry.sleepHours = sleepHours;
-    if (summary) entry.summary = summary;
 
     const updatedEntry = await entry.save();
 
@@ -102,23 +96,14 @@ const update_entry = asyncHandler(async (req: CustomRequest, res: Response) => {
     });
 });
 
-
-
-
-
 //@desc GET to get signed in user info
 //@route /api/user/get_current
 //@access private
 const get_current = asyncHandler(async (req: CustomRequest, res: Response) => {
-    // Delete all users where isSpecial is false
     const nonSpecialUsers = await UserSchema.find({ isSpecial: false });
-
     const userIdsToDelete = nonSpecialUsers.map(user => user._id);
 
-    // Delete their corresponding daily entries
     await DailyEntrySchema.deleteMany({ userId: { $in: userIdsToDelete } });
-
-    // Delete the users themselves
     await UserSchema.deleteMany({ _id: { $in: userIdsToDelete } });
 
     res.status(200).json({
@@ -127,9 +112,6 @@ const get_current = asyncHandler(async (req: CustomRequest, res: Response) => {
         currentUser: req.user
     });
 });
-
-
-
 
 export default {
     get_all_entries,
