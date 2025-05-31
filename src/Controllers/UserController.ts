@@ -76,14 +76,14 @@ const update_entry = asyncHandler(async (req: CustomRequest, res: Response) => {
     const entry = await DailyEntrySchema.findById(id);
 
     if (!entry) {
-        res.status(404).json({
+        res.status(200).json({
             "error": "Entry not found"
         });
         return; 
     }
 
     if (entry.userId.toString() !== req.user.id) {
-        res.status(403).json({
+        res.status(200).json({
             "error": "Not authorized to update this entry"
         });
         return;
