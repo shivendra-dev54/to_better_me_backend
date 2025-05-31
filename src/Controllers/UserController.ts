@@ -67,12 +67,11 @@ const get_all_entries = asyncHandler(async (req: CustomRequest, res: Response) =
 
 
 
-//@desc DELETE to delete any entry
-//@route /api/user/update_entry/:id
+//@desc PUT to update entry
+//@route /api/user/update_entry
 //@access private
 const update_entry = asyncHandler(async (req: CustomRequest, res: Response) => {
-    const id = req.params.id;
-    const { date, sleepHours, summary } = req.body;
+    const { date, sleepHours, summary, id } = req.body;
 
     const entry = await DailyEntrySchema.findById(id);
 
