@@ -24,9 +24,27 @@ const daily_entry = (0, express_async_handler_1.default)((req, res) => __awaiter
         res.status(400);
         throw new Error("Please provide date, sleepHours, and summary.");
     }
+    // Convert to start of day to compare date-only (ignoring time)
+    const entryDate = new Date(date);
+    entryDate.setHours(0, 0, 0, 0);
+    // Check for existing entry for that user and date
+    const existingEntry = yield DailyEntryModel_1.default.findOne({
+        userId: req.user.id,
+        date: {
+            $gte: entryDate,
+            $lt: new Date(entryDate.getTime() + 24 * 60 * 60 * 1000), // next day
+        },
+    });
+    if (existingEntry) {
+        res.status(409).json({
+            message: "Entry for this date already exists. Please edit the existing entry.",
+        });
+        return;
+    }
+    // Create new entry
     const entry = yield DailyEntryModel_1.default.create({
         userId: req.user.id,
-        date: new Date(date),
+        date: entryDate,
         sleepHours,
         summary,
     });
@@ -39,22 +57,36 @@ const get_all_entries = (0, express_async_handler_1.default)((req, res) => __awa
     const entries = yield DailyEntryModel_1.default.find({ userId: req.user.id }).sort({ date: -1 });
     res.status(200).json(entries);
 }));
-//@desc DELETE to delete any entry
-//@route /api/user/delete_entry/:id
+//@desc PUT to update entry
+//@route /api/user/update_entry
 //@access private
-const delete_entry = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const id = req.params.id;
+const update_entry = (0, express_async_handler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { date, sleepHours, summary, id } = req.body;
     const entry = yield DailyEntryModel_1.default.findById(id);
     if (!entry) {
-        res.status(404);
-        throw new Error("Entry not found");
+        res.status(200).json({
+            "error": "Entry not found"
+        });
+        return;
     }
-    if (entry.userId !== req.user.id) {
-        res.status(403);
-        throw new Error("Not authorized to delete this entry");
+    if (entry.userId.toString() !== req.user.id) {
+        res.status(200).json({
+            "error": "Not authorized to update this entry"
+        });
+        return;
     }
-    yield entry.deleteOne();
-    res.status(200).json({ message: "Entry deleted", id });
+    // Update the fields only if they are provided
+    if (date)
+        entry.date = new Date(date);
+    if (sleepHours !== undefined)
+        entry.sleepHours = sleepHours;
+    if (summary)
+        entry.summary = summary;
+    const updatedEntry = yield entry.save();
+    res.status(200).json({
+        message: "Entry updated successfully",
+        entry: updatedEntry,
+    });
 }));
 //@desc GET to get signed in user info
 //@route /api/user/get_current
@@ -77,5 +109,5 @@ exports.default = {
     get_all_entries,
     get_current,
     daily_entry,
-    delete_entry
+    update_entry
 };

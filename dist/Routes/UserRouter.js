@@ -8,7 +8,7 @@ const UserController_1 = __importDefault(require("../Controllers/UserController"
 const ValidateToken_1 = __importDefault(require("../Middleware/ValidateToken"));
 const UserRouter = (0, express_1.Router)();
 UserRouter.route("/api/user/get_current").get(ValidateToken_1.default, UserController_1.default.get_current);
-UserRouter.route("/api/user/delete_entry/:id").delete(ValidateToken_1.default, UserController_1.default.delete_entry);
+UserRouter.route("/api/user/update_entry").put(ValidateToken_1.default, UserController_1.default.update_entry);
 UserRouter.route("/api/user/daily_entry").post(ValidateToken_1.default, UserController_1.default.daily_entry);
 UserRouter.route("/api/user/get_all_entries").get(ValidateToken_1.default, UserController_1.default.get_all_entries);
 exports.default = UserRouter;
